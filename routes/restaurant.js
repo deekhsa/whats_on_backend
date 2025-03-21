@@ -9,18 +9,35 @@ router.get('/', async (req, res) => {
   const query = req.query;
 
   try {
-    let pipeline = [];
+    const lng = parseFloat(query.lng);
+    const lat = parseFloat(query.lat);
+
+    if (isNaN(lng) || isNaN(lat)) {
+      return res.status(400).json({ error: 'Invalid or missing lng/lat values' });
+    }
+
+    const geoQuery = {
+        key: 'location',
+        near: { type: 'Point', coordinates: [Number(lng), Number(lat)] },
+        distanceField: 'distance',
+        spherical: true
+      };
+
+    const pipeline = [
+      { $geoNear: geoQuery},
+      { $sort: { distance: 1 } },
+    ];
 
     if (query.q) {
       pipeline.push({
         $match: {
-          name: { $regex: `^${query.q}`, $options: 'i' },
+          $or: [
+            { name: { $regex: `^${query.q}`, $options: 'i' } },
+            { cuisines: { $regex: `^${query.q}`, $options: 'i' } }
+          ],
         },
       });
     }
-
-    const lng = parseFloat(query.lng);
-    const lat = parseFloat(query.lat);
     const radiusInKm = 50;
     const radians = radiusInKm / 6371;
 
@@ -48,10 +65,10 @@ router.get('/', async (req, res) => {
     });
 
     const restaurants = await restaurant.aggregate(pipeline);
-    res.json({ message: 'Icons updated successfully', restaurants });
+    res.json({ message: 'Data fetched successfully', restaurants });
   } catch (err) {
-    console.error('Error:', err);
-    res.status(500).send('Error fetching data');
+    console.error('Error fetching data:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
