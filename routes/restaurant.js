@@ -25,7 +25,6 @@ router.get('/', async (req, res) => {
 
     const pipeline = [
       { $geoNear: geoQuery},
-      { $sort: { distance: 1 } },
     ];
 
     if (query.q) {
@@ -62,6 +61,9 @@ router.get('/', async (req, res) => {
 
     pipeline.push({
       $replaceRoot: { newRoot: '$restaurant' },
+    });
+    pipeline.push({
+      $sort: { distance: 1 }
     });
 
     const restaurants = await restaurant.aggregate(pipeline);
